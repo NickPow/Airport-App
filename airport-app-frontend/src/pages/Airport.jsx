@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import FlightTable from "../components/FlightTable";
-import Navbar from "../components/Navbar";
 import http from "../api/http";
 
 export default function Airport() {
@@ -24,7 +23,8 @@ export default function Airport() {
           setDepartures(depRes.data || []);
           setLoading(false);
         }
-      } catch (err) {
+      } catch (error) {
+        console.error("Failed to load flights:", error);
         if (isMounted) {
           setErrMsg("Failed to load flights for this airport.");
           setLoading(false);

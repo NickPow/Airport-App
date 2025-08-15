@@ -7,9 +7,8 @@ import Admin from "./pages/Admin.jsx";
 
 export default function App() {
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto", padding: "16px" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar />
-
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/airport/:airportId" element={<Airport />} />

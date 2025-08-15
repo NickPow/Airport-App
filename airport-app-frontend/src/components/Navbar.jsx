@@ -27,6 +27,7 @@ export default function Navbar() {
       <h1 style={{ margin: 0, color: "#ffffff" }}>Airport App</h1>
       <div style={{ display: "flex", alignItems: "center" }}>
         <Link to="/" style={linkStyle("/")}>Home</Link>
+        <Link to="/flights" style={linkStyle("/flights")}>Flights</Link>
         <Link to="/admin" style={linkStyle("/admin")}>Admin</Link>
       </div>
     </nav>

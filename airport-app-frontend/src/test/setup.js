@@ -16,7 +16,7 @@ vi.mock('axios', () => ({
 
 vi.mock('react-router-dom', () => ({
   useNavigate: () => vi.fn(),
-  useLocation: () => ({ pathname: '/' }),
+  useLocation: () => ({ pathname: '/', search: '' }),
   useParams: () => ({}),
   BrowserRouter: ({ children }) => children,
   Routes: ({ children }) => children,

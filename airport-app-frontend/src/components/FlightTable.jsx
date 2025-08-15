@@ -1,12 +1,46 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import PropTypes from "prop-types";
+import { useNavigate } from "react-router-dom";
+import http from "../api/http";
 
 export default function FlightTable({ flights, onEdit, onDelete }) {
   
   console.log("FlightTable received flights:", flights);
   
+  const navigate = useNavigate();
+  const [airportCodeToId, setAirportCodeToId] = useState({});
   
   const safeFlights = Array.isArray(flights) ? flights : [];
+
+  // Load airport mapping when component mounts
+  useEffect(() => {
+    async function loadAirportMapping() {
+      try {
+        const res = await http.get("/airports");
+        const mapping = {};
+        if (res.data && Array.isArray(res.data)) {
+          res.data.forEach(airport => {
+            if (airport.code && airport.id) {
+              mapping[airport.code] = airport.id;
+            }
+          });
+        }
+        setAirportCodeToId(mapping);
+      } catch (error) {
+        console.error("Failed to load airport mapping:", error);
+      }
+    }
+    loadAirportMapping();
+  }, []);
+
+  const handleAirportClick = (airportCode) => {
+    const airportId = airportCodeToId[airportCode];
+    if (airportId) {
+      navigate(`/airports/${airportId}`);
+    } else {
+      console.warn(`No airport ID found for code: ${airportCode}`);
+    }
+  };
   
   const formatDateTime = (dateTime) => {
     if (!dateTime) return "-";
@@ -46,9 +80,14 @@ export default function FlightTable({ flights, onEdit, onDelete }) {
               <tr style={headerRow}>
                 <th style={th}>Flight</th>
                 <th style={th}>Airline</th>
+                <th style={th}>Aircraft</th>
                 <th style={th}>Route</th>
                 <th style={th}>Departure</th>
+                <th style={th}>Gate</th>
+                <th style={th}>Terminal</th>
                 <th style={th}>Status</th>
+                <th style={th}>Type</th>
+                <th style={th}>Capacity</th>
                 <th style={th}>Actions</th>
               </tr>
             </thead>
@@ -56,20 +95,65 @@ export default function FlightTable({ flights, onEdit, onDelete }) {
               {safeFlights.map((flight, index) => (
                 <tr key={flight.id} style={{...dataRow, backgroundColor: index % 2 === 0 ? "#f9fafb" : "white"}}>
                   <td style={td}>
-                    <div style={flightNumber}>{flight.flightNumber}</div>
+                    <div 
+                      style={clickableFlightNumber}
+                      onClick={() => navigate(`/flights?highlight=${flight.id}`)}
+                      onMouseEnter={(e) => {
+                        e.target.style.color = "#1d4ed8";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.color = "#3b82f6";
+                      }}
+                      title="View flight details"
+                    >
+                      {flight.flightNumber}
+                    </div>
                   </td>
                   <td style={td}>
                     <div style={airlineName}>{flight.airline || "-"}</div>
                   </td>
                   <td style={td}>
+                    <div style={aircraftInfo}>{flight.aircraft || "-"}</div>
+                  </td>
+                  <td style={td}>
                     <div style={routeInfo}>
-                      <span style={routeCode}>{flight.origin || "-"}</span>
+                      <span 
+                        style={clickableRouteCode}
+                        onClick={() => handleAirportClick(flight.origin)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = "#e5e7eb";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "#f3f4f6";
+                        }}
+                        title={`View ${flight.origin} airport details`}
+                      >
+                        {flight.origin || "-"}
+                      </span>
                       <span style={routeArrow}>→</span>
-                      <span style={routeCode}>{flight.destination || "-"}</span>
+                      <span 
+                        style={clickableRouteCode}
+                        onClick={() => handleAirportClick(flight.destination)}
+                        onMouseEnter={(e) => {
+                          e.target.style.backgroundColor = "#e5e7eb";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.backgroundColor = "#f3f4f6";
+                        }}
+                        title={`View ${flight.destination} airport details`}
+                      >
+                        {flight.destination || "-"}
+                      </span>
                     </div>
                   </td>
                   <td style={td}>
                     <div style={timeInfo}>{flight.departureTime ? formatDateTime(flight.departureTime) : "-"}</div>
+                  </td>
+                  <td style={td}>
+                    <div style={gateInfo}>{flight.gate || "-"}</div>
+                  </td>
+                  <td style={td}>
+                    <div style={terminalInfo}>{flight.terminalNumber || "-"}</div>
                   </td>
                   <td style={td}>
                     <span style={{
@@ -79,6 +163,14 @@ export default function FlightTable({ flights, onEdit, onDelete }) {
                     }}>
                       {flight.status || "Scheduled"}
                     </span>
+                  </td>
+                  <td style={td}>
+                    <div style={flightTypeInfo}>{flight.flightType || "DEPARTURE"}</div>
+                  </td>
+                  <td style={td}>
+                    <div style={capacityInfo}>
+                      {flight.passengerCapacity ? `${flight.passengerCapacity} seats` : "-"}
+                    </div>
                   </td>
                   <td style={td}>
                     <div style={actionButtons}>
@@ -187,15 +279,24 @@ const td = {
   verticalAlign: "middle",
 };
 
-const flightNumber = {
+const clickableFlightNumber = {
   fontWeight: "600",
-  color: "#1f2937",
   fontSize: "15px",
+  color: "#3b82f6",
+  cursor: "pointer",
+  textDecoration: "underline",
+  transition: "color 0.2s ease",
 };
 
 const airlineName = {
   color: "#4b5563",
   fontSize: "14px",
+};
+
+const aircraftInfo = {
+  color: "#4b5563",
+  fontSize: "13px",
+  fontStyle: "italic",
 };
 
 const routeInfo = {
@@ -204,13 +305,16 @@ const routeInfo = {
   gap: "8px",
 };
 
-const routeCode = {
+const clickableRouteCode = {
   fontWeight: "600",
   color: "#1f2937",
   fontSize: "13px",
   padding: "4px 8px",
   background: "#f3f4f6",
   borderRadius: "4px",
+  cursor: "pointer",
+  transition: "background-color 0.2s ease",
+  userSelect: "none",
 };
 
 const routeArrow = {
@@ -224,6 +328,22 @@ const timeInfo = {
   fontWeight: "500",
 };
 
+const gateInfo = {
+  color: "#1f2937",
+  fontSize: "14px",
+  fontWeight: "600",
+  backgroundColor: "#f3f4f6",
+  padding: "4px 8px",
+  borderRadius: "4px",
+  textAlign: "center",
+};
+
+const terminalInfo = {
+  color: "#1f2937",
+  fontSize: "13px",
+  fontWeight: "500",
+};
+
 const statusBadge = {
   padding: "4px 12px",
   borderRadius: "20px",
@@ -231,6 +351,19 @@ const statusBadge = {
   fontWeight: "600",
   textTransform: "uppercase",
   letterSpacing: "0.5px",
+};
+
+const flightTypeInfo = {
+  color: "#6b7280",
+  fontSize: "12px",
+  fontWeight: "500",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+};
+
+const capacityInfo = {
+  color: "#4b5563",
+  fontSize: "13px",
 };
 
 const actionButtons = {

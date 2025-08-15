@@ -35,12 +35,16 @@ export default function Airport() {
             id: flight.id,
             flightNumber: flight.flightNumber,
             airline: flight.airlineName || flight.airline || "-",
+            aircraft: flight.aircraftType || flight.aircraft || "-",
             origin: flight.originCode || flight.origin || "-",
             destination: flight.destinationCode || flight.destination || "-",
             departureTime: flight.scheduledTime || flight.departureTime,
             arrivalTime: flight.scheduledTime || flight.arrivalTime,
             status: flight.status || "Scheduled",
-            flightType: flight.flightType
+            flightType: flight.flightType,
+            gate: flight.gateNumber || flight.gate || "-",
+            terminalNumber: flight.terminalNumber || "-",
+            passengerCapacity: flight.passengerCapacity || "-",
           })) : [];
 
           // Normalize departures data
@@ -48,12 +52,16 @@ export default function Airport() {
             id: flight.id,
             flightNumber: flight.flightNumber,
             airline: flight.airlineName || flight.airline || "-",
+            aircraft: flight.aircraftType || flight.aircraft || "-",
             origin: flight.originCode || flight.origin || "-",
             destination: flight.destinationCode || flight.destination || "-",
             departureTime: flight.scheduledTime || flight.departureTime,
             arrivalTime: flight.scheduledTime || flight.arrivalTime,
             status: flight.status || "Scheduled",
-            flightType: flight.flightType
+            flightType: flight.flightType,
+            gate: flight.gateNumber || flight.gate || "-",
+            terminalNumber: flight.terminalNumber || "-",
+            passengerCapacity: flight.passengerCapacity || "-",
           })) : [];
 
           setArrivals(normalizedArrivals);
@@ -63,7 +71,7 @@ export default function Airport() {
 
         // Try to load airport details, but don't fail if it doesn't exist
         try {
-          const airportRes = await http.get(`http://localhost:8080/airports/${id}`);
+          const airportRes = await http.get(`/airports/${id}`);
           if (isMounted) {
             setAirport(airportRes.data);
           }

@@ -4,13 +4,22 @@ import FlightTable from "../components/FlightTable";
 
 const Admin = () => {
   const [flights, setFlights] = useState([]);
+  const [airports, setAirports] = useState([]);
+  const [airlines, setAirlines] = useState([]);
+  const [aircraftTypes, setAircraftTypes] = useState([]);
   const [form, setForm] = useState({
     flightNumber: "",
     airline: "",
+    aircraft: "",
     departureTime: "",
     arrivalTime: "",
     origin: "",
     destination: "",
+    status: "ON_TIME",
+    flightType: "DEPARTURE",
+    gate: "",
+    terminalNumber: "",
+    passengerCapacity: "",
   });
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -34,7 +43,7 @@ const Admin = () => {
               id: f.id,
               flightNumber: f.flightNumber,
               airline: f.airlineName || "No Airline",
-              aircraft: f.aircraft || "",
+              aircraft: f.aircraftType || "",
               status: f.status,
               flightType: f.flightType,
               scheduledTime: f.scheduledTime,
@@ -42,6 +51,9 @@ const Admin = () => {
               destination: f.destinationCode || "No Destination",
               departureTime: f.scheduledTime,
               arrivalTime: f.scheduledTime,
+              gate: f.gateNumber || "",
+              terminalNumber: f.terminalNumber || "",
+              passengerCapacity: f.passengerCapacity || "",
             };
           });
 
@@ -63,7 +75,60 @@ const Admin = () => {
       }
     };
 
+    const fetchDropdownData = async () => {
+      try {
+        // Fetch airports
+        const airportsRes = await axios.get("http://localhost:8080/airports");
+        if (isMounted && airportsRes.data) {
+          setAirports(Array.isArray(airportsRes.data) ? airportsRes.data : []);
+        }
+
+        // Set common airlines (could be fetched from backend in real app)
+        if (isMounted) {
+          setAirlines([
+            "Air Canada",
+            "WestJet",
+            "Porter Airlines",
+            "Air Transat",
+            "Flair Airlines",
+            "Sunwing Airlines",
+            "Canadian North",
+            "Air North",
+          ]);
+        }
+
+        // Set common aircraft types (could be fetched from backend in real app)
+        if (isMounted) {
+          setAircraftTypes([
+            "Airbus A220-100",
+            "Airbus A220-300",
+            "Airbus A319",
+            "Airbus A320",
+            "Airbus A321",
+            "Airbus A330-300",
+            "Boeing 737-700",
+            "Boeing 737-800",
+            "Boeing 737-900",
+            "Boeing 737 MAX 8",
+            "Boeing 767-300",
+            "Boeing 777-200",
+            "Boeing 777-300ER",
+            "Boeing 787-8",
+            "Boeing 787-9",
+            "Bombardier CRJ-200",
+            "Bombardier CRJ-900",
+            "Bombardier Q400",
+            "Embraer E175",
+            "Embraer E190",
+          ]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch dropdown data", err);
+      }
+    };
+
     fetchFlights();
+    fetchDropdownData();
 
     return () => {
       isMounted = false;
@@ -74,20 +139,139 @@ const Admin = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  // Functions to save new entries to backend
+  const saveNewAirline = async (airlineName) => {
+    try {
+      const response = await axios.post('http://localhost:8080/airlines', {
+        name: airlineName
+      });
+      if (response.data) {
+        setAirlines([...airlines, airlineName]);
+        console.log(`New airline "${airlineName}" saved successfully`);
+      }
+    } catch (error) {
+      console.error('Failed to save new airline:', error);
+    }
+  };
+
+  const saveNewAircraft = async (aircraftType) => {
+    try {
+      const response = await axios.post('http://localhost:8080/aircraft-types', {
+        type: aircraftType
+      });
+      if (response.data) {
+        setAircraftTypes([...aircraftTypes, aircraftType]);
+        console.log(`New aircraft type "${aircraftType}" saved successfully`);
+      }
+    } catch (error) {
+      console.error('Failed to save new aircraft type:', error);
+    }
+  };
+
+  const saveNewAirport = async (airportCode, airportName) => {
+    try {
+      const response = await axios.post('http://localhost:8080/airports', {
+        code: airportCode.toUpperCase(),
+        name: airportName
+      });
+      if (response.data) {
+        const newAirport = { id: response.data.id, code: airportCode.toUpperCase(), name: airportName };
+        setAirports([...airports, newAirport]);
+        console.log(`New airport "${airportCode} - ${airportName}" saved successfully`);
+      }
+    } catch (error) {
+      console.error('Failed to save new airport:', error);
+    }
+  };
+
+  // Handle custom input for dropdowns
+  const handleCustomInput = async (fieldName, value) => {
+    if (!value || value.trim() === '') return;
+
+    if (fieldName === 'airline') {
+      const exists = airlines.includes(value);
+      if (!exists) {
+        await saveNewAirline(value);
+      }
+    } else if (fieldName === 'aircraft') {
+      const exists = aircraftTypes.includes(value);
+      if (!exists) {
+        await saveNewAircraft(value);
+      }
+    } else if (fieldName === 'origin' || fieldName === 'destination') {
+      // For airports, check if it's a new airport code
+      const exists = airports.some(airport => airport.code === value.toUpperCase());
+      if (!exists && value.length >= 3) {
+        // Prompt for airport name if it's a new code
+        const airportName = prompt(`Enter the name for airport ${value.toUpperCase()}:`);
+        if (airportName && airportName.trim()) {
+          await saveNewAirport(value, airportName.trim());
+        }
+      }
+    }
+  };
+
+  const validateForm = () => {
+    const errors = [];
+    
+    if (!form.flightNumber.trim()) {
+      errors.push("Flight number is required");
+    } else if (!/^[A-Z]{2,3}\d{1,4}$/.test(form.flightNumber.trim())) {
+      errors.push("Flight number must be in format like AC101 or WS1234");
+    }
+    
+    if (!form.airline.trim()) {
+      errors.push("Airline is required");
+    }
+    
+    if (!form.origin.trim()) {
+      errors.push("Origin airport is required");
+    }
+    
+    if (!form.destination.trim()) {
+      errors.push("Destination airport is required");
+    }
+    
+    if (form.origin === form.destination) {
+      errors.push("Origin and destination cannot be the same");
+    }
+    
+    if (!form.departureTime) {
+      errors.push("Departure time is required");
+    }
+    
+    if (form.passengerCapacity && (isNaN(form.passengerCapacity) || parseInt(form.passengerCapacity) < 1)) {
+      errors.push("Passenger capacity must be a positive number");
+    }
+    
+    return errors;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrMsg(""); 
+    
+    // Validate form
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setErrMsg(validationErrors.join(". "));
+      return;
+    }
     
     try {
       
       const payload = {
         flightNumber: form.flightNumber,
-        flightType: "DEPARTURE", 
-        status: "ON_TIME",
+        flightType: form.flightType,
+        status: form.status,
         scheduledTime: form.departureTime,
-        airlineName: form.airline, 
-        originCode: form.origin,   
-        destinationCode: form.destination, 
+        airlineName: form.airline,
+        aircraft: form.aircraft,
+        originCode: form.origin,
+        destinationCode: form.destination,
+        gate: form.gate,
+        terminalNumber: form.terminalNumber,
+        passengerCapacity: form.passengerCapacity ? parseInt(form.passengerCapacity) : null,
       };
 
       console.log("Submitting payload:", payload); 
@@ -130,10 +314,16 @@ const Admin = () => {
       setForm({
         flightNumber: "",
         airline: "",
+        aircraft: "",
         departureTime: "",
         arrivalTime: "",
         origin: "",
         destination: "",
+        status: "ON_TIME",
+        flightType: "DEPARTURE",
+        gate: "",
+        terminalNumber: "",
+        passengerCapacity: "",
       });
       
       setErrMsg(""); 
@@ -159,10 +349,16 @@ const Admin = () => {
     setForm({
       flightNumber: flight.flightNumber,
       airline: flight.airline,
+      aircraft: flight.aircraft || "",
       departureTime: flight.departureTime,
       arrivalTime: flight.arrivalTime,
       origin: flight.origin,
       destination: flight.destination,
+      status: flight.status || "ON_TIME",
+      flightType: flight.flightType || "DEPARTURE",
+      gate: flight.gate || "",
+      terminalNumber: flight.terminalNumber || "",
+      passengerCapacity: flight.passengerCapacity || "",
     });
     setEditingId(flight.id);
   };
@@ -256,7 +452,7 @@ const Admin = () => {
                 <input 
                   id="flightNumber"
                   name="flightNumber" 
-                  placeholder="e.g., AA123" 
+                  placeholder="e.g., AC101" 
                   value={form.flightNumber} 
                   onChange={handleChange} 
                   style={input}
@@ -271,14 +467,23 @@ const Admin = () => {
                 <input 
                   id="airline"
                   name="airline" 
-                  placeholder="e.g., American Airlines" 
                   value={form.airline} 
-                  onChange={handleChange} 
+                  onChange={handleChange}
+                  onBlur={(e) => {
+                    handleInputBlur(e);
+                    handleCustomInput('airline', e.target.value);
+                  }}
+                  placeholder="Select or enter airline name..."
+                  list="airlines-list"
                   style={input}
                   onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
                   required 
                 />
+                <datalist id="airlines-list">
+                  {airlines.map((airline) => (
+                    <option key={airline} value={airline} />
+                  ))}
+                </datalist>
               </div>
               
               <div style={inputWrapper}>
@@ -286,14 +491,25 @@ const Admin = () => {
                 <input 
                   id="origin"
                   name="origin" 
-                  placeholder="e.g., LAX" 
                   value={form.origin} 
-                  onChange={handleChange} 
+                  onChange={handleChange}
+                  onBlur={(e) => {
+                    handleInputBlur(e);
+                    handleCustomInput('origin', e.target.value);
+                  }}
+                  placeholder="Select or enter airport code..."
+                  list="airports-list"
                   style={input}
                   onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
                   required 
                 />
+                <datalist id="airports-list">
+                  {airports.map((airport) => (
+                    <option key={airport.id} value={airport.code}>
+                      {airport.code} - {airport.name}
+                    </option>
+                  ))}
+                </datalist>
               </div>
               
               <div style={inputWrapper}>
@@ -301,13 +517,128 @@ const Admin = () => {
                 <input 
                   id="destination"
                   name="destination" 
-                  placeholder="e.g., JFK" 
                   value={form.destination} 
+                  onChange={handleChange}
+                  onBlur={(e) => {
+                    handleInputBlur(e);
+                    handleCustomInput('destination', e.target.value);
+                  }}
+                  placeholder="Select or enter airport code..."
+                  list="airports-list-dest"
+                  style={input}
+                  onFocus={handleInputFocus}
+                  required 
+                />
+                <datalist id="airports-list-dest">
+                  {airports.map((airport) => (
+                    <option key={airport.id} value={airport.code}>
+                      {airport.code} - {airport.name}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
+              
+              <div style={inputWrapper}>
+                <label htmlFor="aircraft" style={label}>Aircraft</label>
+                <input 
+                  id="aircraft"
+                  name="aircraft" 
+                  value={form.aircraft} 
+                  onChange={handleChange}
+                  onBlur={(e) => {
+                    handleInputBlur(e);
+                    handleCustomInput('aircraft', e.target.value);
+                  }}
+                  placeholder="Select or enter aircraft type..."
+                  list="aircraft-list"
+                  style={input}
+                  onFocus={handleInputFocus}
+                />
+                <datalist id="aircraft-list">
+                  {aircraftTypes.map((aircraft) => (
+                    <option key={aircraft} value={aircraft} />
+                  ))}
+                </datalist>
+              </div>
+
+              <div style={inputWrapper}>
+                <label htmlFor="status" style={label}>Status</label>
+                <select 
+                  id="status"
+                  name="status" 
+                  value={form.status} 
                   onChange={handleChange} 
                   style={input}
                   onFocus={handleInputFocus}
                   onBlur={handleInputBlur}
-                  required 
+                  required
+                >
+                  <option value="ON_TIME">On Time</option>
+                  <option value="DELAYED">Delayed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                  <option value="BOARDING">Boarding</option>
+                  <option value="DEPARTED">Departed</option>
+                </select>
+              </div>
+
+              <div style={inputWrapper}>
+                <label htmlFor="flightType" style={label}>Flight Type</label>
+                <select 
+                  id="flightType"
+                  name="flightType" 
+                  value={form.flightType} 
+                  onChange={handleChange} 
+                  style={input}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  required
+                >
+                  <option value="DEPARTURE">Departure</option>
+                  <option value="ARRIVAL">Arrival</option>
+                </select>
+              </div>
+
+              <div style={inputWrapper}>
+                <label htmlFor="gate" style={label}>Gate</label>
+                <input 
+                  id="gate"
+                  name="gate" 
+                  placeholder="e.g., A12" 
+                  value={form.gate} 
+                  onChange={handleChange} 
+                  style={input}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                />
+              </div>
+
+              <div style={inputWrapper}>
+                <label htmlFor="terminalNumber" style={label}>Terminal</label>
+                <input 
+                  id="terminalNumber"
+                  name="terminalNumber" 
+                  placeholder="e.g., 1" 
+                  value={form.terminalNumber} 
+                  onChange={handleChange} 
+                  style={input}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                />
+              </div>
+
+              <div style={inputWrapper}>
+                <label htmlFor="passengerCapacity" style={label}>Passenger Capacity</label>
+                <input 
+                  id="passengerCapacity"
+                  name="passengerCapacity" 
+                  type="number"
+                  placeholder="e.g., 180" 
+                  value={form.passengerCapacity} 
+                  onChange={handleChange} 
+                  style={input}
+                  onFocus={handleInputFocus}
+                  onBlur={handleInputBlur}
+                  min="1"
                 />
               </div>
               

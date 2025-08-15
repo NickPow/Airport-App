@@ -5,7 +5,7 @@ export default function FlightTable({ flights, onEdit, onDelete }) {
   
   console.log("FlightTable received flights:", flights);
   
-  // Ensure flights is always an array
+  
   const safeFlights = Array.isArray(flights) ? flights : [];
   
   const formatDateTime = (dateTime) => {
@@ -63,13 +63,13 @@ export default function FlightTable({ flights, onEdit, onDelete }) {
                   </td>
                   <td style={td}>
                     <div style={routeInfo}>
-                      <span style={routeCode}>{flight.origin}</span>
+                      <span style={routeCode}>{flight.origin || "-"}</span>
                       <span style={routeArrow}>→</span>
-                      <span style={routeCode}>{flight.destination}</span>
+                      <span style={routeCode}>{flight.destination || "-"}</span>
                     </div>
                   </td>
                   <td style={td}>
-                    <div style={timeInfo}>{formatDateTime(flight.departureTime)}</div>
+                    <div style={timeInfo}>{flight.departureTime ? formatDateTime(flight.departureTime) : "-"}</div>
                   </td>
                   <td style={td}>
                     <span style={{

@@ -24,7 +24,10 @@ const Admin = () => {
         const res = await axios.get("http://localhost:8080/admin/flights");
 
         if (isMounted) {
-          const normalized = res.data.map((f) => {
+          
+          const flightData = Array.isArray(res.data) ? res.data : [];
+          
+          const normalized = flightData.map((f) => {
             console.log("Processing flight:", f); 
             console.log("airlineName:", f.airlineName, "originCode:", f.originCode, "destinationCode:", f.destinationCode);
             return {
@@ -42,9 +45,11 @@ const Admin = () => {
             };
           });
 
-          console.log("Fetched flights data:", res.data); 
-          console.log("First flight object:", res.data[0]); 
-          console.log("All keys in first flight:", Object.keys(res.data[0])); 
+          console.log("Fetched flights data:", flightData); 
+          if (flightData.length > 0) {
+            console.log("First flight object:", flightData[0]); 
+            console.log("All keys in first flight:", Object.keys(flightData[0])); 
+          }
           console.log("Normalized flights:", normalized); 
           setFlights(normalized);
           setLoading(false);
@@ -74,15 +79,15 @@ const Admin = () => {
     setErrMsg(""); 
     
     try {
-      // Use string-based payload for the new backend endpoint
+      
       const payload = {
         flightNumber: form.flightNumber,
         flightType: "DEPARTURE", 
         status: "ON_TIME",
         scheduledTime: form.departureTime,
-        airlineName: form.airline, // Use actual form input
-        originCode: form.origin, // Use actual form input  
-        destinationCode: form.destination, // Use actual form input
+        airlineName: form.airline, 
+        originCode: form.origin,   
+        destinationCode: form.destination, 
       };
 
       console.log("Submitting payload:", payload); 
@@ -247,8 +252,9 @@ const Admin = () => {
           <form onSubmit={handleSubmit} style={formStyle}>
             <div style={formGrid}>
               <div style={inputWrapper}>
-                <label style={label}>Flight Number</label>
+                <label htmlFor="flightNumber" style={label}>Flight Number</label>
                 <input 
+                  id="flightNumber"
                   name="flightNumber" 
                   placeholder="e.g., AA123" 
                   value={form.flightNumber} 
@@ -261,8 +267,9 @@ const Admin = () => {
               </div>
               
               <div style={inputWrapper}>
-                <label style={label}>Airline</label>
+                <label htmlFor="airline" style={label}>Airline</label>
                 <input 
+                  id="airline"
                   name="airline" 
                   placeholder="e.g., American Airlines" 
                   value={form.airline} 
@@ -275,8 +282,9 @@ const Admin = () => {
               </div>
               
               <div style={inputWrapper}>
-                <label style={label}>Origin Airport</label>
+                <label htmlFor="origin" style={label}>Origin Airport</label>
                 <input 
+                  id="origin"
                   name="origin" 
                   placeholder="e.g., LAX" 
                   value={form.origin} 
@@ -289,8 +297,9 @@ const Admin = () => {
               </div>
               
               <div style={inputWrapper}>
-                <label style={label}>Destination Airport</label>
+                <label htmlFor="destination" style={label}>Destination Airport</label>
                 <input 
+                  id="destination"
                   name="destination" 
                   placeholder="e.g., JFK" 
                   value={form.destination} 
@@ -303,8 +312,9 @@ const Admin = () => {
               </div>
               
               <div style={inputWrapper}>
-                <label style={label}>Departure Time</label>
+                <label htmlFor="departureTime" style={label}>Departure Time</label>
                 <input 
+                  id="departureTime"
                   name="departureTime" 
                   type="datetime-local" 
                   value={form.departureTime} 
@@ -345,8 +355,9 @@ const Admin = () => {
               </div>
               
               <div style={inputWrapper}>
-                <label style={label}>Arrival Time</label>
+                <label htmlFor="arrivalTime" style={label}>Arrival Time</label>
                 <input 
+                  id="arrivalTime"
                   name="arrivalTime" 
                   type="datetime-local" 
                   value={form.arrivalTime} 

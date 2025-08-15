@@ -12,7 +12,7 @@ export default function Home() {
 
     async function loadData() {
       try {
-        const res = await http.get("http://localhost:8080/airports");
+        const res = await http.get("/airports");
         if (isMounted) {
           setAirports(res.data || []);
           setLoading(false);

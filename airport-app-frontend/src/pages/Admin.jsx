@@ -74,15 +74,15 @@ const Admin = () => {
     setErrMsg(""); 
     
     try {
+      // Use string-based payload for the new backend endpoint
       const payload = {
         flightNumber: form.flightNumber,
-        flightType: "DEPARTURE",
+        flightType: "DEPARTURE", 
         status: "ON_TIME",
         scheduledTime: form.departureTime,
-        airlineName: form.airline, 
-        originCode: form.origin, 
-        destinationCode: form.destination, 
-        
+        airlineName: form.airline, // Use actual form input
+        originCode: form.origin, // Use actual form input  
+        destinationCode: form.destination, // Use actual form input
       };
 
       console.log("Submitting payload:", payload); 
@@ -104,7 +104,7 @@ const Admin = () => {
         setFlights(flights.map((f) => (f.id === editingId ? updated : f)));
         setEditingId(null);
       } else {
-        const res = await axios.post("http://localhost:8080/admin/flights", payload);
+        const res = await axios.post("http://localhost:8080/admin/flights/simple", payload);
         console.log("Server response:", res.data); 
         
         const added = {

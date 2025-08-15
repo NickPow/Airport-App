@@ -11,7 +11,7 @@ export default function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/airport/:airportId" element={<Airport />} />
+        <Route path="/airports/:id" element={<Airport />} />
         <Route path="/admin" element={<Admin />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

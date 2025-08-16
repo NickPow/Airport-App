@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import http from "../api/http";
 
@@ -68,7 +67,7 @@ const Flights = () => {
   const fetchFlights = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8080/admin/flights");
+      const response = await http.get("/admin/flights");
       
       
       const enhancedFlights = (Array.isArray(response.data) ? response.data : []).map(flight => ({
@@ -91,11 +90,20 @@ const Flights = () => {
         delay: 0,
       }));
 
-      
-      const flightsWithPassengers = enhancedFlights.map(flight => ({
-        ...flight,
-        currentPassengers: Math.floor(Math.random() * flight.passengerCapacity * 0.9),
-      }));
+      // Generate consistent passenger counts based on flight ID (not random)
+      const flightsWithPassengers = enhancedFlights.map(flight => {
+        // Use flight ID as seed for consistent passenger count
+        const seed = flight.id || 1;
+        const capacity = parseInt(flight.passengerCapacity) || 200;
+        // Generate a consistent "random" number based on flight ID
+        const pseudoRandom = ((seed * 9301 + 49297) % 233280) / 233280;
+        const passengerCount = Math.floor(pseudoRandom * capacity * 0.9);
+        
+        return {
+          ...flight,
+          currentPassengers: passengerCount,
+        };
+      });
 
       setFlights(flightsWithPassengers);
       setError("");

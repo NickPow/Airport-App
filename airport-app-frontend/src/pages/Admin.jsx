@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import FlightTable from "../components/FlightTable";
+import http from "../api/http";
 
 const Admin = () => {
   const [flights, setFlights] = useState([]);
@@ -24,21 +24,23 @@ const Admin = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState("");
+  const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterAirline, setFilterAirline] = useState("ALL");
+  const [filterFlightType, setFilterFlightType] = useState("ALL");
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     let isMounted = true;
 
     const fetchFlights = async () => {
       try {
-        const res = await axios.get("http://localhost:8080/admin/flights");
+        const res = await http.get("/admin/flights");
 
         if (isMounted) {
           
           const flightData = Array.isArray(res.data) ? res.data : [];
           
           const normalized = flightData.map((f) => {
-            console.log("Processing flight:", f); 
-            console.log("airlineName:", f.airlineName, "originCode:", f.originCode, "destinationCode:", f.destinationCode);
             return {
               id: f.id,
               flightNumber: f.flightNumber,
@@ -57,11 +59,6 @@ const Admin = () => {
             };
           });
 
-          console.log("Fetched flights data:", flightData); 
-          if (flightData.length > 0) {
-            console.log("First flight object:", flightData[0]); 
-            console.log("All keys in first flight:", Object.keys(flightData[0])); 
-          }
           console.log("Normalized flights:", normalized); 
           setFlights(normalized);
           setLoading(false);
@@ -77,13 +74,13 @@ const Admin = () => {
 
     const fetchDropdownData = async () => {
       try {
-        // Fetch airports
-        const airportsRes = await axios.get("http://localhost:8080/airports");
+        
+        const airportsRes = await http.get("/airports");
         if (isMounted && airportsRes.data) {
           setAirports(Array.isArray(airportsRes.data) ? airportsRes.data : []);
         }
 
-        // Set common airlines (could be fetched from backend in real app)
+        
         if (isMounted) {
           setAirlines([
             "Air Canada",
@@ -97,7 +94,7 @@ const Admin = () => {
           ]);
         }
 
-        // Set common aircraft types (could be fetched from backend in real app)
+        
         if (isMounted) {
           setAircraftTypes([
             "Airbus A220-100",
@@ -142,7 +139,7 @@ const Admin = () => {
   // Functions to save new entries to backend
   const saveNewAirline = async (airlineName) => {
     try {
-      const response = await axios.post('http://localhost:8080/airlines', {
+      const response = await http.post('/airlines', {
         name: airlineName
       });
       if (response.data) {
@@ -156,7 +153,7 @@ const Admin = () => {
 
   const saveNewAircraft = async (aircraftType) => {
     try {
-      const response = await axios.post('http://localhost:8080/aircraft-types', {
+      const response = await http.post('/aircraft-types', {
         type: aircraftType
       });
       if (response.data) {
@@ -170,7 +167,7 @@ const Admin = () => {
 
   const saveNewAirport = async (airportCode, airportName) => {
     try {
-      const response = await axios.post('http://localhost:8080/airports', {
+      const response = await http.post('/airports', {
         code: airportCode.toUpperCase(),
         name: airportName
       });
@@ -184,7 +181,7 @@ const Admin = () => {
     }
   };
 
-  // Handle custom input for dropdowns
+  
   const handleCustomInput = async (fieldName, value) => {
     if (!value || value.trim() === '') return;
 
@@ -199,10 +196,10 @@ const Admin = () => {
         await saveNewAircraft(value);
       }
     } else if (fieldName === 'origin' || fieldName === 'destination') {
-      // For airports, check if it's a new airport code
+      
       const exists = airports.some(airport => airport.code === value.toUpperCase());
       if (!exists && value.length >= 3) {
-        // Prompt for airport name if it's a new code
+        
         const airportName = prompt(`Enter the name for airport ${value.toUpperCase()}:`);
         if (airportName && airportName.trim()) {
           await saveNewAirport(value, airportName.trim());
@@ -251,7 +248,7 @@ const Admin = () => {
     e.preventDefault();
     setErrMsg(""); 
     
-    // Validate form
+    
     const validationErrors = validateForm();
     if (validationErrors.length > 0) {
       setErrMsg(validationErrors.join(". "));
@@ -266,47 +263,55 @@ const Admin = () => {
         status: form.status,
         scheduledTime: form.departureTime,
         airlineName: form.airline,
-        aircraft: form.aircraft,
+        aircraftType: form.aircraft,
         originCode: form.origin,
         destinationCode: form.destination,
-        gate: form.gate,
+        gateNumber: form.gate,
         terminalNumber: form.terminalNumber,
         passengerCapacity: form.passengerCapacity ? parseInt(form.passengerCapacity) : null,
-      };
-
-      console.log("Submitting payload:", payload); 
+      }; 
 
       if (editingId) {
-        const res = await axios.put(
-          `http://localhost:8080/admin/flights/${editingId}`,
+        const res = await http.put(
+          `/admin/flights/${editingId}`,
           payload
         );
         const updated = {
           id: res.data.id,
           flightNumber: res.data.flightNumber,
           airline: res.data.airlineName || form.airline,
+          aircraft: res.data.aircraftType || form.aircraft,
           origin: res.data.originCode || form.origin,
           destination: res.data.destinationCode || form.destination,
           departureTime: res.data.scheduledTime,
           arrivalTime: res.data.scheduledTime,
+          status: res.data.status || form.status,
+          flightType: res.data.flightType || form.flightType,
+          gate: res.data.gateNumber || form.gate,
+          terminalNumber: res.data.terminalNumber || form.terminalNumber,
+          passengerCapacity: res.data.passengerCapacity || form.passengerCapacity,
         };
         setFlights(flights.map((f) => (f.id === editingId ? updated : f)));
         setEditingId(null);
       } else {
-        const res = await axios.post("http://localhost:8080/admin/flights/simple", payload);
-        console.log("Server response:", res.data); 
+        const res = await http.post("/admin/flights/simple", payload);
         
         const added = {
           id: res.data.id,
           flightNumber: res.data.flightNumber,
-          airline: res.data.airlineName || payload.airline,
-          origin: res.data.originCode || payload.origin,
-          destination: res.data.destinationCode || payload.destination,
+          airline: res.data.airlineName || payload.airlineName,
+          aircraft: res.data.aircraftType || payload.aircraftType,
+          origin: res.data.originCode || payload.originCode,
+          destination: res.data.destinationCode || payload.destinationCode,
           departureTime: res.data.scheduledTime,
           arrivalTime: res.data.scheduledTime,
           status: res.data.status,
           flightType: res.data.flightType,
+          gate: res.data.gateNumber || payload.gateNumber,
+          terminalNumber: res.data.terminalNumber || payload.terminalNumber,
+          passengerCapacity: res.data.passengerCapacity || payload.passengerCapacity,
         };
+        
         setFlights([...flights, added]);
       }
 
@@ -365,13 +370,30 @@ const Admin = () => {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:8080/admin/flights/${id}`);
+      await http.delete(`/admin/flights/${id}`);
       setFlights(flights.filter((f) => f.id !== id));
     } catch (err) {
       console.error("Delete error", err);
       setErrMsg("Failed to delete flight.");
     }
   };
+
+  
+  const filteredFlights = flights.filter(flight => {
+    const statusMatch = filterStatus === "ALL" || flight.status === filterStatus;
+    const airlineMatch = filterAirline === "ALL" || flight.airline === filterAirline;
+    const flightTypeMatch = filterFlightType === "ALL" || flight.flightType === filterFlightType;
+    const searchMatch = searchTerm === "" || 
+      flight.flightNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      flight.airline?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      flight.origin?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      flight.destination?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return statusMatch && airlineMatch && flightTypeMatch && searchMatch;
+  });
+
+  
+  const uniqueAirlines = [...new Set(flights.map(flight => flight.airline))].filter(Boolean).sort();
 
   const handleInputFocus = (e) => {
     e.target.style.borderColor = "#3b82f6";
@@ -386,8 +408,13 @@ const Admin = () => {
   const setQuickDateTime = (hours) => {
     const now = new Date();
     now.setHours(hours, 0, 0, 0);
-    const isoString = now.toISOString().slice(0, 16);
-    return isoString;
+    
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const hour = String(now.getHours()).padStart(2, '0');
+    const minute = String(now.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hour}:${minute}`;
   };
 
   const handleQuickTime = (field, hours) => {
@@ -406,8 +433,15 @@ const Admin = () => {
     newDate.setSeconds(0);
     newDate.setMilliseconds(0);
     
-    const isoString = newDate.toISOString().slice(0, 16);
-    setForm({ ...form, [field]: isoString });
+    
+    const year = newDate.getFullYear();
+    const month = String(newDate.getMonth() + 1).padStart(2, '0');
+    const day = String(newDate.getDate()).padStart(2, '0');
+    const hour = String(newDate.getHours()).padStart(2, '0');
+    const minute = String(newDate.getMinutes()).padStart(2, '0');
+    const localDateTimeString = `${year}-${month}-${day}T${hour}:${minute}`;
+    
+    setForm({ ...form, [field]: localDateTimeString });
   };
 
   const getQuickDates = () => {
@@ -758,13 +792,92 @@ const Admin = () => {
 
         <div style={tableCard}>
           <h2 style={sectionTitle}>Flight Schedule</h2>
+          
+          {/* Filter Section */}
+          <div style={filterSection}>
+            <div style={searchContainer}>
+              <input
+                type="text"
+                placeholder="Search flights, airlines, airports..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={searchInput}
+              />
+            </div>
+            
+            <div style={filtersRow}>
+              <div style={filterContainer}>
+                <label style={filterLabel}>Status:</label>
+                <select
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  style={filterSelect}
+                >
+                  <option value="ALL">All Status</option>
+                  <option value="ON_TIME">On Time</option>
+                  <option value="DELAYED">Delayed</option>
+                  <option value="BOARDING">Boarding</option>
+                  <option value="DEPARTED">Departed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                </select>
+              </div>
+
+              <div style={filterContainer}>
+                <label style={filterLabel}>Airline:</label>
+                <select
+                  value={filterAirline}
+                  onChange={(e) => setFilterAirline(e.target.value)}
+                  style={filterSelect}
+                >
+                  <option value="ALL">All Airlines</option>
+                  {uniqueAirlines.map(airline => (
+                    <option key={airline} value={airline}>{airline}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={filterContainer}>
+                <label style={filterLabel}>Type:</label>
+                <select
+                  value={filterFlightType}
+                  onChange={(e) => setFilterFlightType(e.target.value)}
+                  style={filterSelect}
+                >
+                  <option value="ALL">All Types</option>
+                  <option value="DEPARTURE">Departure</option>
+                  <option value="ARRIVAL">Arrival</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Flight Stats */}
+            <div style={statsRow}>
+              <div style={statItem}>
+                <span style={statNumber}>{filteredFlights.length}</span>
+                <span style={statLabel}>Showing</span>
+              </div>
+              <div style={statItem}>
+                <span style={statNumber}>{flights.length}</span>
+                <span style={statLabel}>Total</span>
+              </div>
+              <div style={statItem}>
+                <span style={statNumber}>{flights.filter(f => f.status === "ON_TIME").length}</span>
+                <span style={statLabel}>On Time</span>
+              </div>
+              <div style={statItem}>
+                <span style={statNumber}>{flights.filter(f => f.status === "DELAYED").length}</span>
+                <span style={statLabel}>Delayed</span>
+              </div>
+            </div>
+          </div>
+
           {loading ? (
             <div style={loadingState}>
               <div style={spinner}></div>
               <p>Loading flights...</p>
             </div>
           ) : (
-            <FlightTable flights={flights} onEdit={handleEdit} onDelete={handleDelete} />
+            <FlightTable flights={filteredFlights} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </div>
       </div>
@@ -1011,6 +1124,101 @@ const quickDateBtn = {
     background: "#bae6fd",
     color: "#0c4a6e",
   },
+};
+
+// Filter styles
+const filterSection = {
+  marginBottom: "24px",
+  padding: "20px",
+  background: "rgba(248, 250, 252, 0.8)",
+  borderRadius: "12px",
+  border: "1px solid rgba(226, 232, 240, 0.8)",
+};
+
+const searchContainer = {
+  marginBottom: "16px",
+};
+
+const searchInput = {
+  width: "100%",
+  padding: "12px 16px",
+  fontSize: "14px",
+  border: "none",
+  borderRadius: "8px",
+  background: "rgba(255, 255, 255, 0.95)",
+  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+  outline: "none",
+  color: "#374151",
+  fontFamily: "inherit",
+};
+
+const filtersRow = {
+  display: "flex",
+  gap: "20px",
+  flexWrap: "wrap",
+  alignItems: "center",
+  marginBottom: "16px",
+};
+
+const filterContainer = {
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+  minWidth: "160px",
+};
+
+const filterLabel = {
+  color: "#374151",
+  fontSize: "14px",
+  fontWeight: "600",
+  minWidth: "50px",
+};
+
+const filterSelect = {
+  padding: "12px 16px",
+  fontSize: "14px",
+  border: "none",
+  borderRadius: "12px",
+  background: "rgba(255, 255, 255, 0.95)",
+  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+  outline: "none",
+  cursor: "pointer",
+  fontWeight: "500",
+  minWidth: "140px",
+  color: "#374151",
+};
+
+const statsRow = {
+  display: "flex",
+  gap: "20px",
+  flexWrap: "wrap",
+  justifyContent: "center",
+  padding: "16px 0",
+  borderTop: "1px solid rgba(226, 232, 240, 0.8)",
+};
+
+const statItem = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  gap: "4px",
+  minWidth: "80px",
+};
+
+const statNumber = {
+  fontSize: "1.5rem",
+  fontWeight: "700",
+  color: "#1f2937",
+  margin: "0",
+};
+
+const statLabel = {
+  fontSize: "12px",
+  fontWeight: "500",
+  color: "#6b7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.5px",
+  margin: "0",
 };
 
 

@@ -9,7 +9,6 @@ const http = axios.create({
   },
 });
 
-
 http.interceptors.response.use(
   (res) => res,
   (err) => {

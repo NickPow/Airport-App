@@ -5,8 +5,6 @@ import http from "../api/http";
 
 export default function FlightTable({ flights, onEdit, onDelete }) {
   
-  console.log("FlightTable received flights:", flights);
-  
   const navigate = useNavigate();
   const [airportCodeToId, setAirportCodeToId] = useState({});
   

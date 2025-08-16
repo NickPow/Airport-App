@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
 import http from "../api/http";
 
@@ -8,6 +7,8 @@ const Flights = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState("ALL");
+  const [filterAirline, setFilterAirline] = useState("ALL");
+  const [filterFlightType, setFilterFlightType] = useState("ALL");
   const [searchTerm, setSearchTerm] = useState("");
   const [highlightedFlightId, setHighlightedFlightId] = useState(null);
   const [airportCodeToId, setAirportCodeToId] = useState({});
@@ -20,7 +21,7 @@ const Flights = () => {
     loadAirportMapping();
   }, []);
 
-  // Load airport mapping
+  
   const loadAirportMapping = async () => {
     try {
       const res = await http.get("/airports");
@@ -47,13 +48,13 @@ const Flights = () => {
     }
   };
 
-  // Handle URL parameters for flight highlighting
+  
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     const flightId = searchParams.get('highlight');
     if (flightId) {
       setHighlightedFlightId(parseInt(flightId));
-      // Scroll to highlighted flight after a short delay to ensure rendering
+      
       setTimeout(() => {
         const element = document.getElementById(`flight-${flightId}`);
         if (element) {
@@ -66,9 +67,9 @@ const Flights = () => {
   const fetchFlights = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:8080/admin/flights");
+      const response = await http.get("/admin/flights");
       
-      // Use real backend data
+      
       const enhancedFlights = (Array.isArray(response.data) ? response.data : []).map(flight => ({
         id: flight.id,
         flightNumber: flight.flightNumber || "N/A",
@@ -89,11 +90,20 @@ const Flights = () => {
         delay: 0,
       }));
 
-      // Simulate some passengers for demonstration
-      const flightsWithPassengers = enhancedFlights.map(flight => ({
-        ...flight,
-        currentPassengers: Math.floor(Math.random() * flight.passengerCapacity * 0.9),
-      }));
+      // Generate consistent passenger counts based on flight ID (not random)
+      const flightsWithPassengers = enhancedFlights.map(flight => {
+        // Use flight ID as seed for consistent passenger count
+        const seed = flight.id || 1;
+        const capacity = parseInt(flight.passengerCapacity) || 200;
+        // Generate a consistent "random" number based on flight ID
+        const pseudoRandom = ((seed * 9301 + 49297) % 233280) / 233280;
+        const passengerCount = Math.floor(pseudoRandom * capacity * 0.9);
+        
+        return {
+          ...flight,
+          currentPassengers: passengerCount,
+        };
+      });
 
       setFlights(flightsWithPassengers);
       setError("");
@@ -105,14 +115,14 @@ const Flights = () => {
     }
   };
 
-  // Handle flight tile click
+  
   const handleFlightClick = (flightId) => {
     setHighlightedFlightId(flightId);
-    // Update URL without page reload
+    
     const newUrl = `${location.pathname}?highlight=${flightId}`;
     navigate(newUrl, { replace: true });
     
-    // Scroll to the clicked flight
+    
     setTimeout(() => {
       const element = document.getElementById(`flight-${flightId}`);
       if (element) {
@@ -121,22 +131,27 @@ const Flights = () => {
     }, 100);
   };
 
-  // Clear highlighting
+  
   const clearHighlight = () => {
     setHighlightedFlightId(null);
     navigate(location.pathname, { replace: true });
   };
 
-  // Filter flights based on status and search term
+  
   const filteredFlights = flights.filter(flight => {
     const statusMatch = filterStatus === "ALL" || flight.status === filterStatus;
+    const airlineMatch = filterAirline === "ALL" || flight.airline === filterAirline;
+    const flightTypeMatch = filterFlightType === "ALL" || flight.flightType === filterFlightType;
     const searchMatch = searchTerm === "" || 
       flight.flightNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       flight.airline.toLowerCase().includes(searchTerm.toLowerCase()) ||
       flight.origin.toLowerCase().includes(searchTerm.toLowerCase()) ||
       flight.destination.toLowerCase().includes(searchTerm.toLowerCase());
-    return statusMatch && searchMatch;
+    return statusMatch && airlineMatch && flightTypeMatch && searchMatch;
   });
+
+  
+  const uniqueAirlines = [...new Set(flights.map(flight => flight.airline))].sort();
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -213,20 +228,49 @@ const Flights = () => {
           />
         </div>
         
-        <div style={filterContainer}>
-          <label style={filterLabel}>Filter by Status:</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            style={filterSelect}
-          >
-            <option value="ALL">All Flights</option>
-            <option value="ON_TIME">On Time</option>
-            <option value="DELAYED">Delayed</option>
-            <option value="BOARDING">Boarding</option>
-            <option value="DEPARTED">Departed</option>
-            <option value="CANCELLED">Cancelled</option>
-          </select>
+        <div style={filtersRow}>
+          <div style={filterContainer}>
+            <label style={filterLabel}>Status:</label>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              style={filterSelect}
+            >
+              <option value="ALL">All Status</option>
+              <option value="ON_TIME">On Time</option>
+              <option value="DELAYED">Delayed</option>
+              <option value="BOARDING">Boarding</option>
+              <option value="DEPARTED">Departed</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+
+          <div style={filterContainer}>
+            <label style={filterLabel}>Airline:</label>
+            <select
+              value={filterAirline}
+              onChange={(e) => setFilterAirline(e.target.value)}
+              style={filterSelect}
+            >
+              <option value="ALL">All Airlines</option>
+              {uniqueAirlines.map(airline => (
+                <option key={airline} value={airline}>{airline}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={filterContainer}>
+            <label style={filterLabel}>Type:</label>
+            <select
+              value={filterFlightType}
+              onChange={(e) => setFilterFlightType(e.target.value)}
+              style={filterSelect}
+            >
+              <option value="ALL">All Types</option>
+              <option value="DEPARTURE">Departure</option>
+              <option value="ARRIVAL">Arrival</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -314,7 +358,7 @@ const Flights = () => {
                   <div 
                     style={clickableAirportCode}
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent flight card click
+                      e.stopPropagation(); 
                       handleAirportClick(flight.origin);
                     }}
                     onMouseEnter={(e) => {
@@ -339,7 +383,7 @@ const Flights = () => {
                   <div 
                     style={clickableAirportCode}
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent flight card click
+                      e.stopPropagation();
                       handleAirportClick(flight.destination);
                     }}
                     onMouseEnter={(e) => {
@@ -492,11 +536,16 @@ const errorAlert = {
 
 const controlsSection = {
   display: "flex",
+  flexDirection: "column",
   gap: "20px",
   marginBottom: "32px",
   maxWidth: "1200px",
   margin: "0 auto 32px auto",
-  flexWrap: "wrap",
+  background: "rgba(255, 255, 255, 0.95)",
+  borderRadius: "20px",
+  padding: "24px",
+  backdropFilter: "blur(10px)",
+  boxShadow: "0 12px 32px rgba(0, 0, 0, 0.1)",
 };
 
 const searchContainer = {
@@ -506,26 +555,36 @@ const searchContainer = {
 
 const searchInput = {
   width: "100%",
-  padding: "12px 16px",
+  padding: "14px 18px",
   fontSize: "14px",
   border: "none",
   borderRadius: "12px",
-  background: "rgba(255, 255, 255, 0.9)",
+  background: "rgba(255, 255, 255, 0.95)",
   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
   outline: "none",
   boxSizing: "border-box",
+  fontWeight: "500",
+};
+
+const filtersRow = {
+  display: "flex",
+  gap: "20px",
+  flexWrap: "wrap",
+  alignItems: "center",
 };
 
 const filterContainer = {
   display: "flex",
   alignItems: "center",
-  gap: "8px",
+  gap: "10px",
+  minWidth: "160px",
 };
 
 const filterLabel = {
-  color: "white",
+  color: "#374151",
   fontSize: "14px",
-  fontWeight: "500",
+  fontWeight: "600",
+  minWidth: "50px",
 };
 
 const filterSelect = {
@@ -533,10 +592,13 @@ const filterSelect = {
   fontSize: "14px",
   border: "none",
   borderRadius: "12px",
-  background: "rgba(255, 255, 255, 0.9)",
+  background: "rgba(255, 255, 255, 0.95)",
   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
   outline: "none",
   cursor: "pointer",
+  fontWeight: "500",
+  minWidth: "140px",
+  color: "#374151",
 };
 
 const statsSection = {
